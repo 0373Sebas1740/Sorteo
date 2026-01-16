@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorteo Dinámico</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  color:#fff;
+  display:flex;
+  min-height:100vh;
+}
+
+/* ===== LAYOUT ===== */
+.panel{
+  flex:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.historial{
+  flex:1;
+  background:rgba(0,0,0,.4);
+  padding:20px;
+  overflow-y:auto;
+}
+
+/* ===== CONFIG ===== */
+.config{
+  display:flex;
+  gap:10px;
+  margin-bottom:15px;
+}
+input{
+  width:90px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  font-size:18px;
+  text-align:center;
+}
+
+/* ===== CÍRCULO ===== */
+.circulo{
+  width:280px;
+  height:280px;
+  border-radius:50%;
+  border:8px solid #fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:120px;
+  font-weight:900;
+  margin:15px 0;
+  box-shadow:0 0 30px rgba(0,0,0,.6);
+}
+
+/* ===== CONTADOR ===== */
+.contador{
+  font-size:26px;
+  font-weight:800;
+  margin-bottom:10px;
+}
+
+/* ===== BOTONES ===== */
+button{
+  padding:12px 26px;
+  font-size:18px;
+  font-weight:700;
+  border:none;
+  border-radius:12px;
+  background:#ff6b6b;
+  color:#fff;
+  cursor:pointer;
+  margin:5px;
+}
+button:hover{background:#ff4757}
+
+/* ===== GANADOR ===== */
+.ganador{
+  display:none;
+  font-size:42px;
+  font-weight:900;
+  margin:15px 0;
+  animation: pop .6s ease;
+}
+@keyframes pop{
+  0%{transform:scale(.6);opacity:0}
+  100%{transform:scale(1);opacity:1}
+}
+
+/* ===== HISTORIAL ===== */
+.historial h3{text-align:center}
+.item{
+  background:rgba(255,255,255,.15);
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+}
+.num{
+  font-size:22px;
+  font-weight:900;
+  color:#ffe082;
+}
+.clear{
+  width:100%;
+  margin-top:10px;
+  background:#57606f;
+}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+
+  <div class="config">
+    <input type="number" id="desde" placeholder="Desde">
+    <input type="number" id="hasta" placeholder="Hasta">
+  </div>
+
+  <div class="contador" id="contador"></div>
+
+  <div class="circulo" id="circulo">00</div>
+
+  <button id="btnSorteo">Iniciar sorteo</button>
+
+  <div class="ganador" id="ganador"></div>
+
+  <button id="btnNuevo" style="display:none">Nuevo sorteo</button>
+
+</div>
+
+<div class="historial">
+  <h3>📜 Historial</h3>
+  <div id="lista"></div>
+  <button class="clear" id="btnClear">🧹 Limpiar resultados</button>
+</div>
+
+<script>
+const circulo = document.getElementById("circulo");
+const btn = document.getElementById("btnSorteo");
+const btnNuevo = document.getElementById("btnNuevo");
+const ganadorEl = document.getElementById("ganador");
+const contadorEl = document.getElementById("contador");
+const lista = document.getElementById("lista");
+
+let historial = JSON.parse(localStorage.getItem("historialSorteo")) || [];
+let intervaloNumeros;
+let intervaloContador;
+
+/* ===== HISTORIAL ===== */
+function renderHistorial(){
+  lista.innerHTML="";
+  historial.forEach(h=>{
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`<div class="num">${h.num}</div><div>${h.fecha}</div>`;
+    lista.appendChild(div);
+  });
+}
+renderHistorial();
+
+/* ===== SORTEO ===== */
+btn.onclick=()=>{
+  const desde=Number(document.getElementById("desde").value);
+  const hasta=Number(document.getElementById("hasta").value);
+
+  if(isNaN(desde)||isNaN(hasta)||desde>=hasta){
+    alert("Rango inválido");
+    return;
+  }
+
+  btn.disabled=true;
+  ganadorEl.style.display="none";
+  btnNuevo.style.display="none";
+
+  // Generar números
+  const numeros=[];
+  for(let i=desde;i<=hasta;i++){
+    numeros.push(i.toString().padStart(2,"0"));
+  }
+
+  // Mezcla continua
+  intervaloNumeros=setInterval(()=>{
+    const random=numeros[Math.floor(Math.random()*numeros.length)];
+    circulo.textContent=random;
+  },80);
+
+  // Contador 5 segundos
+  let tiempo=5;
+  contadorEl.textContent=`⏳ Sorteo en: ${tiempo}`;
+
+  intervaloContador=setInterval(()=>{
+    tiempo--;
+    contadorEl.textContent=`⏳ Sorteo en: ${tiempo}`;
+
+    if(tiempo===0){
+      clearInterval(intervaloContador);
+      clearInterval(intervaloNumeros);
+
+      const ganador=circulo.textContent;
+      contadorEl.textContent="";
+
+      ganadorEl.innerHTML=`🎉 GANADOR: ${ganador} 🎉`;
+      ganadorEl.style.display="block";
+
+      historial.push({
+        num:ganador,
+        fecha:new Date().toLocaleString()
+      });
+      historial=historial.slice(-10);
+      localStorage.setItem("historialSorteo",JSON.stringify(historial));
+      renderHistorial();
+
+      btnNuevo.style.display="inline-block";
+      btn.disabled=false;
+    }
+  },1000);
+};
+
+/* ===== NUEVO SORTEO ===== */
+btnNuevo.onclick=()=>{
+  circulo.textContent="00";
+  ganadorEl.style.display="none";
+  contadorEl.textContent="";
+};
+
+/* ===== LIMPIAR ===== */
+document.getElementById("btnClear").onclick=()=>{
+  if(confirm("¿Borrar historial?")){
+    historial=[];
+    localStorage.removeItem("historialSorteo");
+    renderHistorial();
+  }
+};
+</script>
+
+</body>
+</html>
